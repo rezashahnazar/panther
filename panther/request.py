@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable
+from contextvars import ContextVar, Token
 from typing import Literal
 from urllib.parse import parse_qsl
 
@@ -15,10 +16,24 @@ logger = logging.getLogger('panther')
 
 
 class Request(BaseRequest):
+    _current_request: ContextVar['Request'] = ContextVar('panther_current_request')
+
     def __init__(self, scope: dict, receive: Callable, send: Callable):
         self._data = ...
         self.validated_data = None  # It's been set in self.validate_input()
         super().__init__(scope=scope, receive=receive, send=send)
+
+    @classmethod
+    def set_current(cls, request: 'Request') -> Token:
+        return cls._current_request.set(request)
+
+    @classmethod
+    def reset_current(cls, token: Token) -> None:
+        cls._current_request.reset(token)
+
+    @classmethod
+    def current(cls) -> 'Request':
+        return cls._current_request.get()
 
     @property
     def method(self) -> Literal['GET', 'POST', 'PUT', 'PATCH', 'DELETE']:
