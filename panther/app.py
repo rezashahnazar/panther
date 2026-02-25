@@ -114,65 +114,61 @@ class API:
         return wrapper
 
     async def handle_endpoint(self, request: Request) -> Response:
-        token = Request.set_current(request)
-        try:
-            # 1. Check Method
-            if request.method not in self.methods:
-                raise MethodNotAllowedAPIError
+        # 1. Check Method
+        if request.method not in self.methods:
+            raise MethodNotAllowedAPIError
 
-            # 2. Authentication
-            if self.auth or config.AUTHENTICATION:
-                auth = self.auth or config.AUTHENTICATION
-                if inspect.isclass(auth):
-                    auth = auth()
-                request.user = await auth(request)
+        # 2. Authentication
+        if self.auth or config.AUTHENTICATION:
+            auth = self.auth or config.AUTHENTICATION
+            if inspect.isclass(auth):
+                auth = auth()
+            request.user = await auth(request)
 
-            # 3. Permissions
-            if self.permissions:
-                for perm in self.permissions:
-                    if inspect.isclass(perm):
-                        perm = perm()
-                    if await perm(request) is False:
-                        raise AuthorizationAPIError
+        # 3. Permissions
+        if self.permissions:
+            for perm in self.permissions:
+                if inspect.isclass(perm):
+                    perm = perm()
+                if await perm(request) is False:
+                    raise AuthorizationAPIError
 
-            # 4. Throttle
-            if self.throttling or config.THROTTLING:
-                throttling = self.throttling or config.THROTTLING
-                await throttling.check_and_increment(request=request)
+        # 4. Throttle
+        if self.throttling or config.THROTTLING:
+            throttling = self.throttling or config.THROTTLING
+            await throttling.check_and_increment(request=request)
 
-            # 5. Validate Input
-            if self.input_model and request.method in {'POST', 'PUT', 'PATCH'}:
-                request.validate_data(model=self.input_model)
+        # 5. Validate Input
+        if self.input_model and request.method in {'POST', 'PUT', 'PATCH'}:
+            request.validate_data(model=self.input_model)
 
-            # 6. Get Cached Response
-            if self.cache and request.method == 'GET':
-                if cached := await get_response_from_cache(request=request, duration=self.cache):
-                    return Response(data=cached.data, headers=cached.headers, status_code=cached.status_code)
+        # 6. Get Cached Response
+        if self.cache and request.method == 'GET':
+            if cached := await get_response_from_cache(request=request, duration=self.cache):
+                return Response(data=cached.data, headers=cached.headers, status_code=cached.status_code)
 
-            # 7. Put PathVariables and Request(If User Wants It) In kwargs
-            kwargs = request.clean_parameters(self.function_annotations)
+        # 7. Put PathVariables and Request(If User Wants It) In kwargs
+        kwargs = request.clean_parameters(self.function_annotations)
 
-            # 8. Call Endpoint
-            if self.is_function_async:
-                response = await self.func(**kwargs)
-            else:
-                response = self.func(**kwargs)
+        # 8. Call Endpoint
+        if self.is_function_async:
+            response = await self.func(**kwargs)
+        else:
+            response = self.func(**kwargs)
 
-            # 9. Clean Response
-            if not isinstance(response, Response):
-                response = Response(data=response)
-            if self.output_model and response.data:
-                await response.serialize_output(output_model=self.output_model)
-            if response.pagination:
-                response.data = await response.pagination.template(response.data)
+        # 9. Clean Response
+        if not isinstance(response, Response):
+            response = Response(data=response)
+        if self.output_model and response.data:
+            await response.serialize_output(output_model=self.output_model)
+        if response.pagination:
+            response.data = await response.pagination.template(response.data)
 
-            # 10. Set New Response To Cache
-            if self.cache and request.method == 'GET':
-                await set_response_in_cache(request=request, response=response, duration=self.cache)
+        # 10. Set New Response To Cache
+        if self.cache and request.method == 'GET':
+            await set_response_in_cache(request=request, response=response, duration=self.cache)
 
-            return response
-        finally:
-            Request.reset_current(token)
+        return response
 
 
 class GenericAPI:

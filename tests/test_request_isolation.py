@@ -37,12 +37,6 @@ async def function_api_race_endpoint(name: str, request: Request):
     return {'name': name, 'path': request.path}
 
 
-@API()
-async def current_request_endpoint(request: Request):
-    current_request = Request.current()
-    return {'same_object': current_request is request, 'path': current_request.path}
-
-
 class ClassBasedRaceEndpoint(GenericAPI):
     auth = RequestIsolationRaceAuth
 
@@ -53,7 +47,6 @@ class ClassBasedRaceEndpoint(GenericAPI):
 test_urls = {
     'race/<name>/': function_api_race_endpoint,
     'race-class/<name>/': ClassBasedRaceEndpoint,
-    'current-request': current_request_endpoint,
 }
 
 
@@ -90,19 +83,3 @@ class TestAPIRequestIsolation(IsolatedAsyncioTestCase):
         assert second_response.status_code == 200
         assert first_response.data == {'name': 'first', 'path': '/race-class/first/'}
         assert second_response.data == {'name': 'second', 'path': '/race-class/second/'}
-
-    async def test_request_current_returns_active_request(self):
-        response = await self.client.get('current-request')
-        assert response.status_code == 200
-        assert response.data == {'same_object': True, 'path': '/current-request'}
-
-    async def test_request_current_raises_outside_request_context(self):
-        with self.assertRaises(LookupError):
-            Request.current()
-
-    async def test_request_current_is_reset_after_response(self):
-        response = await self.client.get('current-request')
-        assert response.status_code == 200
-
-        with self.assertRaises(LookupError):
-            Request.current()
