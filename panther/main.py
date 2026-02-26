@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import sys
 from collections.abc import Callable
@@ -13,6 +14,9 @@ from panther._utils import (
     ENDPOINT_WEBSOCKET,
     reformat_code,
     traceback_message,
+)
+from panther.background_tasks import (
+    register_application_event_loop,
 )
 from panther.base_websocket import Websocket
 from panther.cli.utils import print_info
@@ -80,6 +84,8 @@ class Panther:
         check_endpoints_inheritance()
 
     async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
+        register_application_event_loop(asyncio.get_running_loop())
+
         if scope['type'] == 'http':
             await self.handle_http(scope=scope, receive=receive, send=send)
         elif scope['type'] == 'websocket':

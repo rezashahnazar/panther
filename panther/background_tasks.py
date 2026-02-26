@@ -32,6 +32,13 @@ if TYPE_CHECKING:
 __all__ = ('BackgroundTask', 'WeekDay')
 
 logger = logging.getLogger('panther')
+_application_event_loop: asyncio.AbstractEventLoop | None = None
+
+
+def register_application_event_loop(loop: asyncio.AbstractEventLoop | None) -> None:
+    global _application_event_loop
+    _application_event_loop = loop
+
 
 if sys.version_info.minor >= 11:
     from typing import Self
@@ -169,7 +176,12 @@ class BackgroundTask:
             self._remaining_interval -= 1
         try:
             if is_function_async(self._func):
-                asyncio.run(self._func(*self._args, **self._kwargs))
+                coroutine = self._func(*self._args, **self._kwargs)
+                app_loop = _application_event_loop
+                if app_loop and app_loop.is_running() and not app_loop.is_closed():
+                    asyncio.run_coroutine_threadsafe(coroutine, app_loop).result()
+                else:
+                    asyncio.run(coroutine)
             else:
                 self._func(*self._args, **self._kwargs)
         except Exception as e:
