@@ -18,6 +18,19 @@ else:
 
     Self = TypeVar('Self', bound='Query')
 
+try:
+    from pymongo.errors import DuplicateKeyError as _PyMongoDuplicateKeyError
+except ImportError:
+    _PyMongoDuplicateKeyError = None
+
+
+def _is_duplicate_key_error(error: Exception) -> bool:
+    if _PyMongoDuplicateKeyError and isinstance(error, _PyMongoDuplicateKeyError):
+        return True
+    if error.__class__.__name__ == 'DuplicateKeyError':
+        return True
+    return getattr(error, 'code', None) in {11000, 11001, 12582}
+
 
 class Query(BaseQuery):
     def __init_subclass__(cls, **kwargs):
@@ -369,6 +382,7 @@ class Query(BaseQuery):
         Get a single document from the database.
         or
         Insert a single document.
+        This method requires a unique index/constraint on queried fields to be correct under concurrency.
 
         Example:
         -------
@@ -383,7 +397,14 @@ class Query(BaseQuery):
         """
         if obj := await cls.find_one(_filter, **kwargs):
             return obj, False
-        return await cls.insert_one(_filter, **kwargs), True
+        try:
+            return await cls.insert_one(_filter, **kwargs), True
+        except Exception as e:
+            if not _is_duplicate_key_error(e):
+                raise
+            if obj := await cls.find_one(_filter, **kwargs):
+                return obj, False
+            raise
 
     @classmethod
     async def find_one_or_raise(cls, _filter: dict | None = None, /, **kwargs) -> Self:
