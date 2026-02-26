@@ -1,5 +1,6 @@
 import contextlib
 import logging
+import re
 from abc import abstractmethod
 
 from pantherdb import Cursor as PantherDBCursor
@@ -91,7 +92,8 @@ class ListAPI(GenericAPI):
         if not self.search_fields or not search_param:
             return {}
         if isinstance(config.DATABASE, MongoDBConnection):
-            if search := [{field: {'$regex': search_param}} for field in self.search_fields]:
+            escaped_search_param = re.escape(search_param)
+            if search := [{field: {'$regex': escaped_search_param}} for field in self.search_fields]:
                 return {'$or': search}
         return {field: search_param for field in self.search_fields}
 
