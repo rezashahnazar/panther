@@ -178,8 +178,10 @@ deleted_count: int = await User.delete_many(age=18)
 Get or insert a document.
 
 ```python
-is_inserted, user = await User.find_one_or_insert(age=18, name='Ali')
+user, is_inserted = await User.find_one_or_insert(age=18, name='Ali')
 ```
+
+For correctness under concurrency, define a unique index/constraint on the queried fields.
 
 ---
 
