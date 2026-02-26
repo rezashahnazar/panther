@@ -1,5 +1,18 @@
 # Panther Release Notes
 
+### 5.2.2
+- Fix function API request isolation
+- Make `find_one_or_insert` race-safe on duplicate key conflicts
+
+### 5.2.0
+- Update requirements for `Python3.14` compatibility
+
+### 5.1.0
+- Add `FileResponse`
+
+### 5.0.2
+- Minor performance improvement.
+
 ### 5.0.0
 - Add Built-In `OpenAPI`
 - Add Built-In `AdminPanel`
