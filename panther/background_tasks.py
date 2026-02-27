@@ -40,6 +40,10 @@ def register_application_event_loop(loop: asyncio.AbstractEventLoop | None) -> N
     _application_event_loop = loop
 
 
+def get_application_event_loop() -> asyncio.AbstractEventLoop | None:
+    return _application_event_loop
+
+
 if sys.version_info.minor >= 11:
     from typing import Self
 else:
