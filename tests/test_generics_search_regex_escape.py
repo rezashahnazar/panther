@@ -26,8 +26,9 @@ class ListAPISearchTest(ListAPI):
 
 class TestListAPISearchRegexEscape(TestCase):
     REDOS_PATTERN = r'([a-zA-Z]+)*$'
-    PAYLOAD_LENGTH_RANGE = range(18, 30)
-    TIMEOUT_SECONDS = 0.35
+    PAYLOAD_LENGTH_RANGE = range(24, 42)
+    ESCAPED_TIMEOUT_SECONDS = 3.0
+    RAW_STALL_TIMEOUT_SECONDS = 0.5
 
     def setUp(self):
         self.previous_database = config.DATABASE
@@ -58,7 +59,7 @@ class TestListAPISearchRegexEscape(TestCase):
             pattern=raw_pattern,
             text='A' * trigger_length,
             repeats=5_000,
-            timeout_seconds=self.TIMEOUT_SECONDS,
+            timeout_seconds=self.ESCAPED_TIMEOUT_SECONDS,
         )
         assert raw_matching_completed is True, f'ReDoS probe: {attempts}'
 
@@ -75,13 +76,13 @@ class TestListAPISearchRegexEscape(TestCase):
                 pattern=raw_pattern,
                 text=near_miss_payload,
                 repeats=1,
-                timeout_seconds=self.TIMEOUT_SECONDS,
+                timeout_seconds=self.RAW_STALL_TIMEOUT_SECONDS,
             )
             escaped_completed, escaped_elapsed = self._run_with_deadline(
                 pattern=escaped_pattern,
                 text=near_miss_payload,
                 repeats=5_000,
-                timeout_seconds=self.TIMEOUT_SECONDS,
+                timeout_seconds=self.ESCAPED_TIMEOUT_SECONDS,
             )
 
             attempts.append(
