@@ -2,6 +2,7 @@ import asyncio
 import logging
 
 from panther._utils import is_function_async
+from panther.background_tasks import get_application_event_loop
 from panther.utils import Singleton
 
 logger = logging.getLogger('panther')
@@ -45,7 +46,11 @@ class Event(Singleton):
         for func in cls._shutdowns:
             if is_function_async(func):
                 try:
-                    asyncio.run(func())
+                    app_loop = get_application_event_loop()
+                    if app_loop and app_loop.is_running() and not app_loop.is_closed():
+                        asyncio.run_coroutine_threadsafe(func(), app_loop).result()
+                    else:
+                        asyncio.run(func())
                 except ModuleNotFoundError:
                     # Error: import of asyncio halted; None in sys.modules
                     #   And as I figured it out, it only happens when we are running with
